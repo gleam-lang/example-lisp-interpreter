@@ -18,6 +18,9 @@ pub type Error {
 type Evaluated =
   Result(Expression, Error)
 
+type Function =
+  fn(List(Expression)) -> Evaluated
+
 pub fn run(source: String) -> Evaluated {
   source
   |> parse([])
@@ -118,17 +121,21 @@ fn function_procedure(
   function: Expression,
 ) -> Result(fn(List(Expression)) -> Evaluated, Error) {
   case function {
-    Atom("+") -> Ok(add)
+    Atom("+") -> Ok(int_function(fn(a, b) { a + b }, 0))
+    Atom("-") -> Ok(int_function(fn(a, b) { a - b }, 0))
     _ -> Error(UnknownFunction(function))
   }
 }
 
-fn add(values: List(Expression)) -> Evaluated {
-  try arguments = list.try_map(values, expect_int)
-  arguments
-  |> list.fold(0, fn(a, b) { a + b })
-  |> Int
-  |> Ok
+fn int_function(reducer: fn(Int, Int) -> Int, initial: Int) -> Function {
+  fn(values) {
+    try arguments = list.try_map(values, expect_int)
+    arguments
+    |> list.reduce(reducer)
+    |> result.unwrap(initial)
+    |> Int
+    |> Ok
+  }
 }
 
 fn expect_int(value: Expression) -> Result(Int, Error) {
