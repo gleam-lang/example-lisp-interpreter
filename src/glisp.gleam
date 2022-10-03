@@ -11,30 +11,33 @@ pub type Expression {
 }
 
 pub type Error {
-  ParseError(String)
   UnknownFunction(Expression)
   TypeError(expected: String, got: String, value: Expression)
 }
-
-type Parsed =
-  Result(#(Expression, String), Error)
 
 type Evaluated =
   Result(Expression, Error)
 
 pub fn run(source: String) -> Evaluated {
-  try #(expression, _rest) = parse(source)
-  evaluate(expression)
+  source
+  |> parse([])
+  |> evaluate(Nil)
 }
 
-fn parse(source: String) -> Parsed {
-  Ok(parse_element(source))
+fn parse(source: String, expressions: List(Expression)) -> List(Expression) {
+  let #(expression, rest) = parse_element(source)
+  let expressions = [expression, ..expressions]
+  case rest {
+    "" -> list.reverse(expressions)
+    _ -> parse(rest, expressions)
+  }
 }
 
 fn parse_element(source: String) -> #(Expression, String) {
   let source = string.trim(source)
   case source {
-    "" | ")" <> _ -> #(Nil, "")
+    "" -> #(Nil, "")
+    ")" <> rest -> #(Nil, rest)
     "(" <> source -> parse_list(source)
     source -> parse_atom(source)
   }
@@ -77,7 +80,17 @@ fn parse_atom_content(source: String, atom: String) -> #(String, String) {
   }
 }
 
-fn evaluate(expression: Expression) -> Evaluated {
+fn evaluate(expressions: List(Expression), accumulator: Expression) -> Evaluated {
+  case expressions {
+    [] -> Ok(accumulator)
+    [expression, ..expressions] -> {
+      try evaluated = evaluate_expression(expression)
+      evaluate(expressions, evaluated)
+    }
+  }
+}
+
+fn evaluate_expression(expression: Expression) -> Evaluated {
   case expression {
     Nil -> Ok(Nil)
     Int(int) -> Ok(Int(int))
@@ -90,7 +103,7 @@ fn evaluate_list(list: List(Expression)) -> Evaluated {
   case list {
     [] -> Ok(Nil)
     [function, ..arguments] -> {
-      try function = evaluate(function)
+      try function = evaluate_expression(function)
       call(function, arguments)
     }
   }

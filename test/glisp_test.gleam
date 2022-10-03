@@ -21,6 +21,10 @@ pub fn negative_int_test() {
   assert Ok(glisp.Int(124)) = glisp.run("124")
 }
 
+pub fn multiple_expressions_test() {
+  assert Ok(glisp.Int(4)) = glisp.run("1 2 3 4")
+}
+
 pub fn add_two_test() {
   assert Ok(glisp.Int(3)) = glisp.run("(+ 1 2)")
 }
