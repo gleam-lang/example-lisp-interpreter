@@ -53,6 +53,14 @@ pub fn multiply_nothing_test() {
   assert Ok(glisp.Int(1)) = glisp.run("(*)")
 }
 
+pub fn divide_test() {
+  assert Ok(glisp.Int(2)) = glisp.run("(/ 20 2 5)")
+}
+
+pub fn divide_nothing_test() {
+  assert Ok(glisp.Int(1)) = glisp.run("(/)")
+}
+
 pub fn multiple_spaces_test() {
   assert Ok(glisp.Int(3)) = glisp.run("  (    +     1   2   ) ")
 }
