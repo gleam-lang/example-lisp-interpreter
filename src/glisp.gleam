@@ -21,7 +21,7 @@ type Evaluated =
 type Function =
   fn(List(Expression)) -> Evaluated
 
-pub fn run(source: String) -> Evaluated {
+pub fn eval(source: String) -> Evaluated {
   source
   |> parse([])
   |> evaluate(Nil)
