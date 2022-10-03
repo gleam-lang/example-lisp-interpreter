@@ -1,7 +1,9 @@
 import gleam/int
 import gleam/list
+import gleam/pair
 import gleam/result
 import gleam/string
+import gleam/map.{Map}
 
 pub type Expression {
   Nil
@@ -15,16 +17,21 @@ pub type Error {
   TypeError(expected: String, got: String, value: Expression)
 }
 
+type State {
+  State(scope: Map(String, Expression))
+}
+
 type Evaluated =
-  Result(Expression, Error)
+  Result(#(Expression, State), Error)
 
 type Function =
-  fn(List(Expression)) -> Evaluated
+  fn(List(Expression)) -> Result(Expression, Error)
 
-pub fn eval(source: String) -> Evaluated {
+pub fn eval(source: String) -> Result(Expression, Error) {
   source
   |> parse([])
-  |> evaluate(Nil)
+  |> evaluate(Nil, State(scope: map.new()))
+  |> result.map(pair.first)
 }
 
 fn parse(source: String, expressions: List(Expression)) -> List(Expression) {
@@ -83,43 +90,51 @@ fn parse_atom_content(source: String, atom: String) -> #(String, String) {
   }
 }
 
-fn evaluate(expressions: List(Expression), accumulator: Expression) -> Evaluated {
+fn evaluate(
+  expressions: List(Expression),
+  accumulator: Expression,
+  state: State,
+) -> Evaluated {
   case expressions {
-    [] -> Ok(accumulator)
+    [] -> Ok(#(accumulator, state))
     [expression, ..expressions] -> {
-      try evaluated = evaluate_expression(expression)
-      evaluate(expressions, evaluated)
+      try #(evaluated, state) = evaluate_expression(expression, state)
+      evaluate(expressions, evaluated, state)
     }
   }
 }
 
-fn evaluate_expression(expression: Expression) -> Evaluated {
+fn evaluate_expression(expression: Expression, state: State) -> Evaluated {
   case expression {
-    Nil -> Ok(Nil)
-    Int(int) -> Ok(Int(int))
-    Atom(atom) -> Ok(Atom(atom))
-    List(expressions) -> evaluate_list(expressions)
+    Nil -> Ok(#(Nil, state))
+    Int(int) -> Ok(#(Int(int), state))
+    Atom(atom) -> Ok(#(Atom(atom), state))
+    List(expressions) -> evaluate_list(expressions, state)
   }
 }
 
-fn evaluate_list(list: List(Expression)) -> Evaluated {
+fn evaluate_list(list: List(Expression), state) -> Evaluated {
   case list {
-    [] -> Ok(Nil)
+    [] -> Ok(#(Nil, state))
     [function, ..arguments] -> {
-      try function = evaluate_expression(function)
-      call(function, arguments)
+      try #(function, state) = evaluate_expression(function, state)
+      try result = call(function, arguments)
+      Ok(#(result, state))
     }
   }
 }
 
-fn call(function: Expression, arguments: List(Expression)) -> Evaluated {
+fn call(
+  function: Expression,
+  arguments: List(Expression),
+) -> Result(Expression, Error) {
   try function = function_procedure(function)
   function(arguments)
 }
 
 fn function_procedure(
   function: Expression,
-) -> Result(fn(List(Expression)) -> Evaluated, Error) {
+) -> Result(fn(List(Expression)) -> Result(Expression, Error), Error) {
   case function {
     Atom("+") -> Ok(int_function(fn(a, b) { a + b }, 0))
     Atom("-") -> Ok(int_function(fn(a, b) { a - b }, 0))
