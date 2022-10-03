@@ -68,3 +68,7 @@ pub fn multiple_spaces_test() {
 pub fn nested_expressions_test() {
   assert Ok(glisp.Int(7)) = glisp.eval("(+ 1 2 (* 2 2))")
 }
+
+pub fn def_test() {
+  assert Ok(glisp.Int(1)) = glisp.eval("(def x 1) x")
+}
