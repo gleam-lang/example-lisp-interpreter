@@ -10,8 +10,7 @@ pub type Expression {
   List(List(Expression))
   Int(Int)
   Atom(String)
-  // TODO: this needs to hold a reference to the scope it closes over
-  Function(Function)
+  Function(function: Function, scope: Map(String, Expression))
   Definition
 }
 
@@ -29,7 +28,7 @@ type Evaluated =
   Result(#(Expression, State), Error)
 
 type Function =
-  fn(List(Expression), State) -> Result(#(Expression, State), Error)
+  fn(List(Expression), State) -> Result(Expression, Error)
 
 pub fn eval(source: String) -> Result(Expression, Error) {
   source
@@ -110,11 +109,7 @@ fn evaluate(
 
 fn evaluate_expression(expression: Expression, state: State) -> Evaluated {
   case expression {
-    Nil -> Ok(#(Nil, state))
-    Definition -> Ok(#(Definition, state))
-
-    Int(int) -> Ok(#(Int(int), state))
-    Function(function) -> Ok(#(Function(function), state))
+    Nil | Definition | Int(_) | Function(..) -> Ok(#(expression, state))
 
     List(expressions) -> evaluate_list(expressions, state)
 
@@ -155,7 +150,11 @@ fn call(
   state: State,
 ) -> Evaluated {
   case callable {
-    Function(function) -> function(arguments, state)
+    Function(function, scope) -> {
+      try #(arguments, _state) = evaluate_expressions(arguments, [], state)
+      try result = function(arguments, State(scope))
+      Ok(#(result, state))
+    }
     Definition -> define(arguments, state)
     _ -> type_error("Function", callable)
   }
@@ -189,16 +188,15 @@ fn evaluate_atom(atom: String, state: State) -> Result(Expression, Error) {
 }
 
 fn int_function(reducer: fn(Int, Int) -> Int, initial: Int) -> Expression {
-  Function(fn(values, state) {
-    try #(values, state) = evaluate_expressions(values, [], state)
+  let function = fn(values, _state) {
     try arguments = list.try_map(values, expect_int)
-    let value =
-      arguments
-      |> list.reduce(reducer)
-      |> result.unwrap(initial)
-      |> Int
-    Ok(#(value, state))
-  })
+    arguments
+    |> list.reduce(reducer)
+    |> result.unwrap(initial)
+    |> Int
+    |> Ok
+  }
+  Function(function, map.new())
 }
 
 fn type_error(expected: String, value: Expression) -> Result(anything, Error) {
@@ -224,7 +222,7 @@ fn type_name(value: Expression) -> String {
     Nil -> "Nil"
     Int(_) -> "Int"
     List(_) -> "List"
-    Function(_) -> "Function"
+    Function(_, _) -> "Function"
     Definition | Atom(_) -> "Atom"
   }
 }
