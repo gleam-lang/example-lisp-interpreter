@@ -72,3 +72,15 @@ pub fn nested_expressions_test() {
 pub fn def_test() {
   assert Ok(glisp.Int(1)) = glisp.eval("(def x 1) x")
 }
+
+pub fn redefine_test() {
+  assert Ok(glisp.Int(2)) = glisp.eval("(def x 1) (def x 2) x")
+}
+
+pub fn var_in_expression_test() {
+  assert Ok(glisp.Int(3)) = glisp.eval("(def x 1) (def x (+ x 2)) x")
+}
+
+pub fn def_sequence_body_test() {
+  assert Ok(glisp.Int(3)) = glisp.eval("(def x 1 2 3) x")
+}
