@@ -64,3 +64,7 @@ pub fn divide_nothing_test() {
 pub fn multiple_spaces_test() {
   assert Ok(glisp.Int(3)) = glisp.eval("  (    +     1   2   ) ")
 }
+
+pub fn nested_expressions_test() {
+  assert Ok(glisp.Int(7)) = glisp.eval("(+ 1 2 (* 2 2))")
+}

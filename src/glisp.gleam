@@ -113,11 +113,26 @@ fn evaluate_expression(expression: Expression, state: State) -> Evaluated {
   }
 }
 
+fn evaluate_expressions(
+  expressions: List(Expression),
+  evaluated: List(Expression),
+  state: State,
+) -> Result(#(List(Expression), State), Error) {
+  case expressions {
+    [] -> Ok(#(list.reverse(evaluated), state))
+    [expression, ..rest] -> {
+      try #(expression, state) = evaluate_expression(expression, state)
+      evaluate_expressions(rest, [expression, ..evaluated], state)
+    }
+  }
+}
+
 fn evaluate_list(list: List(Expression), state) -> Evaluated {
   case list {
     [] -> Ok(#(Nil, state))
     [function, ..arguments] -> {
       try #(function, state) = evaluate_expression(function, state)
+      try #(arguments, state) = evaluate_expressions(arguments, [], state)
       try result = call(function, arguments)
       Ok(#(result, state))
     }
