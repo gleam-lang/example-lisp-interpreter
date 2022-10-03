@@ -33,8 +33,24 @@ pub fn add_many_test() {
   assert Ok(glisp.Int(73)) = glisp.run("(+ 1 2 100 -7 -23)")
 }
 
-pub fn subtract_many_test() {
+pub fn add_nothing_test() {
+  assert Ok(glisp.Int(0)) = glisp.run("(+)")
+}
+
+pub fn subtract_test() {
   assert Ok(glisp.Int(-4)) = glisp.run("(- 1 2 3)")
+}
+
+pub fn subtract_nothing_test() {
+  assert Ok(glisp.Int(0)) = glisp.run("(-)")
+}
+
+pub fn multiply_test() {
+  assert Ok(glisp.Int(6)) = glisp.run("(* 1 2 3)")
+}
+
+pub fn multiply_nothing_test() {
+  assert Ok(glisp.Int(1)) = glisp.run("(*)")
 }
 
 pub fn multiple_spaces_test() {

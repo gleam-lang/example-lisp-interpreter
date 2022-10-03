@@ -123,6 +123,7 @@ fn function_procedure(
   case function {
     Atom("+") -> Ok(int_function(fn(a, b) { a + b }, 0))
     Atom("-") -> Ok(int_function(fn(a, b) { a - b }, 0))
+    Atom("*") -> Ok(int_function(fn(a, b) { a * b }, 1))
     _ -> Error(UnknownFunction(function))
   }
 }
