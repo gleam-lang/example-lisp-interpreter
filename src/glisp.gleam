@@ -70,6 +70,7 @@ fn parse_atom_content(source: String, atom: String) -> #(String, String) {
     string.pop_grapheme(source)
     |> result.unwrap(#("", ""))
   case char {
+    "" -> #(atom, source)
     ")" -> #(atom, source)
     " " -> #(atom, rest)
     char -> parse_atom_content(rest, atom <> char)
