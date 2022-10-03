@@ -4,7 +4,6 @@ import gleam/pair
 import gleam/result
 import gleam/string
 import gleam/map.{Map}
-import gleam/io
 
 pub type Expression {
   Nil
@@ -155,7 +154,6 @@ fn call(
   arguments: List(Expression),
   state: State,
 ) -> Evaluated {
-  io.debug(callable)
   case callable {
     Function(function) -> function(arguments, state)
     Definition -> define(arguments, state)
