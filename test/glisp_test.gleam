@@ -82,7 +82,7 @@ pub fn var_in_expression_test() {
 }
 
 pub fn def_sequence_body_test() {
-  assert Error(glisp.MalformedDefinition) = glisp.eval("(define x 1 2 3) x")
+  assert Error(glisp.IncorrectArity(2, 4)) = glisp.eval("(define x 1 2 3) x")
 }
 
 pub fn empty_test() {

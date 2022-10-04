@@ -10,25 +10,27 @@ pub type Expression {
   List(List(Expression))
   Int(Int)
   Atom(String)
-  Function(function: Function, scope: Map(String, Expression))
-  Definition
+  Function(function: Function, scope: Scope)
 }
 
 pub type Error {
   Unknown(String)
-  MalformedDefinition
+  IncorrectArity(expected: Int, got: Int)
   TypeError(expected: String, got: String, value: Expression)
 }
 
+pub type Scope =
+  Map(String, Expression)
+
 pub type State {
-  State(scope: Map(String, Expression))
+  State(global_scope: Scope, local_scope: Scope)
 }
 
 type Evaluated =
   Result(#(Expression, State), Error)
 
 type Function =
-  fn(List(Expression), State) -> Result(Expression, Error)
+  fn(List(Expression), State) -> Evaluated
 
 pub fn eval(source: String) -> Result(Expression, Error) {
   source
@@ -94,13 +96,17 @@ fn parse_atom_content(source: String, atom: String) -> #(String, String) {
 }
 
 fn new_state() -> State {
-  map.new()
-  |> map.insert("+", int_function(fn(a, b) { a + b }, 0))
-  |> map.insert("-", int_function(fn(a, b) { a - b }, 0))
-  |> map.insert("*", int_function(fn(a, b) { a * b }, 1))
-  |> map.insert("/", int_function(fn(a, b) { a / b }, 1))
-  |> map.insert("empty", List([]))
-  |> State
+  let global_scope =
+    map.new()
+    |> map.insert("+", make_int_operator(fn(a, b) { a + b }, 0))
+    |> map.insert("-", make_int_operator(fn(a, b) { a - b }, 0))
+    |> map.insert("*", make_int_operator(fn(a, b) { a * b }, 1))
+    |> map.insert("/", make_int_operator(fn(a, b) { a / b }, 1))
+    |> map.insert("empty", List([]))
+    |> map.insert("cons", Function(cons_builtin, map.new()))
+    |> map.insert("define", Function(define_builtin, map.new()))
+  let local_scope = map.new()
+  State(global_scope: global_scope, local_scope: local_scope)
 }
 
 fn evaluate(
@@ -119,7 +125,7 @@ fn evaluate(
 
 fn evaluate_expression(expression: Expression, state: State) -> Evaluated {
   case expression {
-    Nil | Definition | Int(_) | Function(..) -> Ok(#(expression, state))
+    Nil | Int(_) | Function(..) -> Ok(#(expression, state))
 
     List(expressions) -> evaluate_list(expressions, state)
 
@@ -157,52 +163,65 @@ fn evaluate_list(list: List(Expression), state) -> Evaluated {
 fn call(
   callable: Expression,
   arguments: List(Expression),
-  state: State,
+  state1: State,
 ) -> Evaluated {
   case callable {
     Function(function, scope) -> {
-      try #(arguments, _state) = evaluate_expressions(arguments, [], state)
-      try result = function(arguments, State(scope))
+      try #(result, state2) = function(arguments, set_locals(state1, scope))
+      let state = set_locals(state2, state1.local_scope)
       Ok(#(result, state))
     }
-    Definition -> define(arguments, state)
     _ -> type_error("Function", callable)
   }
 }
 
-fn define(arguments: List(Expression), state: State) -> Evaluated {
+fn set_locals(state: State, locals: Scope) -> State {
+  State(..state, local_scope: locals)
+}
+
+fn insert_global(state: State, name: String, value: Expression) -> State {
+  State(..state, global_scope: map.insert(state.global_scope, name, value))
+}
+
+fn define_builtin(arguments: List(Expression), state: State) -> Evaluated {
   case arguments {
     [name, value] -> {
       try name = expect_atom(name)
-      try #(value, _body_scope_state) = evaluate_expression(value, state)
-      let state = State(scope: map.insert(state.scope, name, value))
-      Ok(#(Nil, state))
+      try #(value, state) = evaluate_expression(value, state)
+      Ok(#(Nil, insert_global(state, name, value)))
     }
-    _ -> Error(MalformedDefinition)
+    _ -> Error(IncorrectArity(2, list.length(arguments)))
   }
 }
 
 fn evaluate_atom(atom: String, state: State) -> Result(Expression, Error) {
-  case atom {
-    "define" -> Ok(Definition)
-    _ ->
-      case map.get(state.scope, atom) {
-        Ok(found) -> Ok(found)
-        Error(_) -> Error(Unknown(atom))
-      }
-  }
+  map.get(state.local_scope, atom)
+  |> result.lazy_or(fn() { map.get(state.global_scope, atom) })
+  |> result.replace_error(Unknown(atom))
 }
 
-fn int_function(reducer: fn(Int, Int) -> Int, initial: Int) -> Expression {
-  let function = fn(values, _state) {
-    try arguments = list.try_map(values, expect_int)
-    arguments
-    |> list.reduce(reducer)
-    |> result.unwrap(initial)
-    |> Int
-    |> Ok
+fn make_int_operator(reducer: fn(Int, Int) -> Int, initial: Int) -> Expression {
+  let function = fn(values, state) {
+    try #(values, state) = evaluate_expressions(values, [], state)
+    try ints = list.try_map(values, expect_int)
+    let result =
+      ints
+      |> list.reduce(reducer)
+      |> result.unwrap(initial)
+      |> Int
+    Ok(#(result, state))
   }
   Function(function, map.new())
+}
+
+fn cons_builtin(values: List(Expression), state: State) -> Evaluated {
+  case values {
+    [head, tail] -> {
+      try tail = expect_list(tail)
+      Ok(#(List([head, ..tail]), state))
+    }
+    _ -> Error(IncorrectArity(2, list.length(values)))
+  }
 }
 
 fn type_error(expected: String, value: Expression) -> Result(anything, Error) {
@@ -223,12 +242,19 @@ fn expect_atom(value: Expression) -> Result(String, Error) {
   }
 }
 
+fn expect_list(value: Expression) -> Result(List(Expression), Error) {
+  case value {
+    List(name) -> Ok(name)
+    _ -> type_error("List", value)
+  }
+}
+
 fn type_name(value: Expression) -> String {
   case value {
     Nil -> "Nil"
     Int(_) -> "Int"
     List(_) -> "List"
     Function(_, _) -> "Function"
-    Definition | Atom(_) -> "Atom"
+    Atom(_) -> "Atom"
   }
 }
