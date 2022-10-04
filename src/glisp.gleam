@@ -10,11 +10,12 @@ pub type Expression {
   List(List(Expression))
   Int(Int)
   Atom(String)
-  Function(function: Function, scope: Scope)
+  Procedure(procedure: Procedure, scope: Scope)
 }
 
 pub type Error {
-  Unknown(String)
+  UnknownValue(String)
+  MissingProcedure
   IncorrectArity(expected: Int, got: Int)
   TypeError(expected: String, got: String, value: Expression)
 }
@@ -29,14 +30,15 @@ pub type State {
 type Evaluated =
   Result(#(Expression, State), Error)
 
-type Function =
+type Procedure =
   fn(List(Expression), State) -> Evaluated
 
-pub fn eval(source: String) -> Result(Expression, Error) {
+pub fn eval(source: String) -> Result(String, Error) {
   source
   |> parse([])
   |> evaluate(Nil, new_state())
   |> result.map(pair.first)
+  |> result.map(print)
 }
 
 fn parse(source: String, expressions: List(Expression)) -> List(Expression) {
@@ -103,8 +105,8 @@ fn new_state() -> State {
     |> map.insert("*", make_int_operator(fn(a, b) { a * b }, 1))
     |> map.insert("/", make_int_operator(fn(a, b) { a / b }, 1))
     |> map.insert("empty", List([]))
-    |> map.insert("cons", Function(cons_builtin, map.new()))
-    |> map.insert("define", Function(define_builtin, map.new()))
+    |> map.insert("cons", Procedure(cons_builtin, map.new()))
+    |> map.insert("define", Procedure(define_builtin, map.new()))
   let local_scope = map.new()
   State(global_scope: global_scope, local_scope: local_scope)
 }
@@ -125,7 +127,7 @@ fn evaluate(
 
 fn evaluate_expression(expression: Expression, state: State) -> Evaluated {
   case expression {
-    Nil | Int(_) | Function(..) -> Ok(#(expression, state))
+    Nil | Int(_) | Procedure(..) -> Ok(#(expression, state))
 
     List(expressions) -> evaluate_list(expressions, state)
 
@@ -152,10 +154,10 @@ fn evaluate_expressions(
 
 fn evaluate_list(list: List(Expression), state) -> Evaluated {
   case list {
-    [] -> Ok(#(Nil, state))
-    [function, ..arguments] -> {
-      try #(function, state) = evaluate_expression(function, state)
-      call(function, arguments, state)
+    [] -> Error(MissingProcedure)
+    [procedure, ..arguments] -> {
+      try #(procedure, state) = evaluate_expression(procedure, state)
+      call(procedure, arguments, state)
     }
   }
 }
@@ -166,12 +168,12 @@ fn call(
   state1: State,
 ) -> Evaluated {
   case callable {
-    Function(function, scope) -> {
-      try #(result, state2) = function(arguments, set_locals(state1, scope))
+    Procedure(procedure, scope) -> {
+      try #(result, state2) = procedure(arguments, set_locals(state1, scope))
       let state = set_locals(state2, state1.local_scope)
       Ok(#(result, state))
     }
-    _ -> type_error("Function", callable)
+    _ -> type_error("procedure", callable)
   }
 }
 
@@ -197,11 +199,11 @@ fn define_builtin(arguments: List(Expression), state: State) -> Evaluated {
 fn evaluate_atom(atom: String, state: State) -> Result(Expression, Error) {
   map.get(state.local_scope, atom)
   |> result.lazy_or(fn() { map.get(state.global_scope, atom) })
-  |> result.replace_error(Unknown(atom))
+  |> result.replace_error(UnknownValue(atom))
 }
 
 fn make_int_operator(reducer: fn(Int, Int) -> Int, initial: Int) -> Expression {
-  let function = fn(values, state) {
+  let procedure = fn(values, state) {
     try #(values, state) = evaluate_expressions(values, [], state)
     try ints = list.try_map(values, expect_int)
     let result =
@@ -211,7 +213,7 @@ fn make_int_operator(reducer: fn(Int, Int) -> Int, initial: Int) -> Expression {
       |> Int
     Ok(#(result, state))
   }
-  Function(function, map.new())
+  Procedure(procedure, map.new())
 }
 
 fn cons_builtin(values: List(Expression), state: State) -> Evaluated {
@@ -255,7 +257,17 @@ fn type_name(value: Expression) -> String {
     Nil -> "Nil"
     Int(_) -> "Int"
     List(_) -> "List"
-    Function(_, _) -> "Function"
+    Procedure(_, _) -> "Procedure"
     Atom(_) -> "Atom"
+  }
+}
+
+fn print(value: Expression) -> String {
+  case value {
+    Nil -> "nil"
+    Int(i) -> int.to_string(i)
+    List(xs) -> "'(" <> string.join(list.map(xs, print), " ") <> ")"
+    Procedure(_, _) -> "#procedure"
+    Atom(x) -> "'" <> x
   }
 }
