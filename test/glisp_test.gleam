@@ -89,6 +89,11 @@ pub fn empty_test() {
   assert Ok(glisp.List([])) = glisp.eval("empty")
 }
 
-pub fn cons_test() {
-  assert Ok(glisp.List([])) = glisp.eval("empty")
+pub fn cons_1_test() {
+  assert Ok(glisp.List([glisp.Int(1)])) = glisp.eval("(cons 1 empty)")
+}
+
+pub fn cons_2_test() {
+  assert Ok(glisp.List([glisp.Int(1), glisp.Int(2)])) =
+    glisp.eval("(cons 1 (cons 2 empty))")
 }

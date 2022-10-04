@@ -215,6 +215,7 @@ fn make_int_operator(reducer: fn(Int, Int) -> Int, initial: Int) -> Expression {
 }
 
 fn cons_builtin(values: List(Expression), state: State) -> Evaluated {
+  try #(values, state) = evaluate_expressions(values, [], state)
   case values {
     [head, tail] -> {
       try tail = expect_list(tail)
