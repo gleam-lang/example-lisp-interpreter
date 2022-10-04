@@ -11,6 +11,7 @@ pub type Expression {
   Int(Int)
   Atom(String)
   Procedure(procedure: Procedure)
+  Closure(arguments: List(String), body: List(Expression), scope: Scope)
 }
 
 pub type Error {
@@ -137,6 +138,7 @@ fn new_state() -> State {
       #("or", Procedure(or_builtin)),
       #("if", Procedure(if_builtin)),
       #("define", Procedure(define_builtin)),
+      #("lambda", Procedure(lambda_builtin)),
     ])
   let local_scope = map.new()
   State(global_scope: global_scope, local_scope: local_scope)
@@ -158,7 +160,7 @@ fn evaluate(
 
 fn evaluate_expression(expression: Expression, state: State) -> Evaluated {
   case expression {
-    Bool(_) | Int(_) | Procedure(..) -> Ok(#(expression, state))
+    Bool(_) | Int(_) | Procedure(_) | Closure(..) -> Ok(#(expression, state))
     List(expressions) -> evaluate_list(expressions, state)
     Atom(atom) -> {
       try value = evaluate_atom(atom, state)
@@ -198,7 +200,41 @@ fn call(
 ) -> Evaluated {
   case callable {
     Procedure(procedure) -> procedure(arguments, state)
-    _ -> type_error("procedure", callable)
+    Closure(parameters, body, environment) ->
+      call_closure(parameters, body, environment, arguments, state)
+    _ -> type_error("Procedure", callable)
+  }
+}
+
+fn call_closure(
+  parameters: List(String),
+  body: List(Expression),
+  environment: Map(String, Expression),
+  arguments: List(Expression),
+  state: State,
+) -> Evaluated {
+  let original_locals = state.local_scope
+  let state = set_locals(state, environment)
+  try state = evaluate_lambda_arguments(parameters, arguments, state, 0)
+  try #(result, state) = evaluate(body, empty, state)
+  Ok(#(result, set_locals(state, original_locals)))
+}
+
+fn evaluate_lambda_arguments(
+  parameters: List(String),
+  arguments: List(Expression),
+  state: State,
+  count: Int,
+) -> Result(State, Error) {
+  case parameters, arguments {
+    [], [] -> Ok(state)
+    [parameter, ..parameters], [argument, ..arguments] -> {
+      try #(argument, state) = evaluate_expression(argument, state)
+      let state = insert_local(state, parameter, argument)
+      evaluate_lambda_arguments(parameters, arguments, state, count + 1)
+    }
+    [], rest -> Error(IncorrectArity(count, count + list.length(rest)))
+    rest, [] -> Error(IncorrectArity(count + list.length(rest), count))
   }
 }
 
@@ -220,6 +256,17 @@ fn define_builtin(arguments: List(Expression), state: State) -> Evaluated {
       try name = expect_atom(name)
       try #(value, state) = evaluate_expression(value, state)
       Ok(#(empty, insert_global(state, name, value)))
+    }
+    _ -> Error(IncorrectArity(2, list.length(arguments)))
+  }
+}
+
+fn lambda_builtin(arguments: List(Expression), state: State) -> Evaluated {
+  case arguments {
+    [parameters, ..body] -> {
+      try parameters = expect_list(parameters)
+      try parameters = list.try_map(parameters, expect_atom)
+      Ok(#(Closure(parameters, body, state.local_scope), state))
     }
     _ -> Error(IncorrectArity(2, list.length(arguments)))
   }
@@ -429,6 +476,7 @@ fn type_name(value: Expression) -> String {
     Bool(_) -> "Bool"
     List(_) -> "List"
     Procedure(_) -> "Procedure"
+    Closure(..) -> "Closure"
     Atom(_) -> "Atom"
   }
 }
@@ -440,6 +488,7 @@ fn print(value: Expression) -> String {
     Bool(False) -> "false"
     List(xs) -> "'(" <> string.join(list.map(xs, print), " ") <> ")"
     Procedure(_) -> "#<procedure>"
+    Closure(..) -> "#<closure>"
     Atom(x) -> "'" <> x
   }
 }

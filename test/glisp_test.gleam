@@ -198,3 +198,25 @@ pub fn if_true_test() {
 pub fn if_false_test() {
   assert Ok("4") = glisp.eval("(if (= 1 2) (+ 1 1) (+ 2 2))")
 }
+
+pub fn closure_test() {
+  assert Ok("1") =
+    glisp.eval(
+      "
+(define id (lambda (x) x))
+(id 1)
+",
+    )
+}
+
+pub fn closure_closes_over_scope_at_time_of_definition_test() {
+  assert Ok("1") =
+    glisp.eval(
+      "
+(define fn (let ((x 1)
+                 (return-x (lambda () x)))
+            return-x))
+(let ((x 2)) (fn))
+",
+    )
+}
