@@ -18,7 +18,7 @@ It features:
 import glisp
 
 pub fn main() {
-  glisp.eval("(+ 1 2 3)") # => "6"
+  glisp.eval("(+ 1 2 3)") //=> "6"
 }
 ```
 
