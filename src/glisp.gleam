@@ -17,6 +17,7 @@ pub type Error {
   MissingProcedure
   IncorrectArity(expected: Int, got: Int)
   TypeError(expected: String, got: String, value: Expression)
+  EmptyList
   UnexpectedEndOfFile
   UnexpectedCloseParen
 }
@@ -124,6 +125,8 @@ fn new_state() -> State {
     |> map.insert("/", make_int_operator(fn(a, b) { a / b }, 1))
     |> map.insert("empty", empty)
     |> map.insert("cons", Procedure(cons_builtin, map.new()))
+    |> map.insert("car", Procedure(car_builtin, map.new()))
+    |> map.insert("cdr", Procedure(cdr_builtin, map.new()))
     |> map.insert("define", Procedure(define_builtin, map.new()))
   let local_scope = map.new()
   State(global_scope: global_scope, local_scope: local_scope)
@@ -243,8 +246,32 @@ fn cons_builtin(values: List(Expression), state: State) -> Evaluated {
   }
 }
 
+fn car_builtin(values: List(Expression), state: State) -> Evaluated {
+  try expression = expect_1(values)
+  try #(value, state) = evaluate_expression(expression, state)
+  try list = expect_list(value)
+  case list {
+    [] -> Error(EmptyList)
+    [head, ..] -> Ok(#(head, state))
+  }
+}
+
+fn cdr_builtin(values: List(Expression), state: State) -> Evaluated {
+  try expression = expect_1(values)
+  try #(value, state) = evaluate_expression(expression, state)
+  try list = expect_list(value)
+  case list {
+    [] -> Error(EmptyList)
+    tail -> Ok(#(List(tail), state))
+  }
+}
+
 fn type_error(expected: String, value: Expression) -> Result(anything, Error) {
   Error(TypeError(expected: expected, got: type_name(value), value: value))
+}
+
+fn arity_error(expected: Int, got: List(a)) -> Result(anything, Error) {
+  Error(IncorrectArity(expected: expected, got: list.length(got)))
 }
 
 fn expect_int(value: Expression) -> Result(Int, Error) {
@@ -265,6 +292,13 @@ fn expect_list(value: Expression) -> Result(List(Expression), Error) {
   case value {
     List(name) -> Ok(name)
     _ -> type_error("List", value)
+  }
+}
+
+fn expect_1(expressions: List(Expression)) -> Result(Expression, Error) {
+  case expressions {
+    [x] -> Ok(x)
+    _ -> arity_error(1, expressions)
   }
 }
 

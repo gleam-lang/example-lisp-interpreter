@@ -100,3 +100,7 @@ pub fn cons_1_test() {
 pub fn cons_2_test() {
   assert Ok("'(1 2)") = glisp.eval("(cons 1 (cons 2 empty))")
 }
+
+pub fn car_test() {
+  assert Ok("1") = glisp.eval("(car (cons 1 (cons 2 empty)))")
+}

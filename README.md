@@ -3,11 +3,11 @@
 A tree-walking Lisp interpreter written in [Gleam](https://gleam.run).
 
 It features:
-- Integers and basic arithmetic.
-- Lists, `cons`.
-- Immutable variable definitions.
-- Lexical scoping.
-- S-expression printing.
+- [x] Integers with `+`, `-`, `*`, and `/`.
+- [x] Lists with `cons`, `car`, `cdr`.
+- [ ] Closures with `lambda`.
+- [x] Global variables with `define`.
+- [ ] Local variables with `let`.
 
 ## Usage
 
@@ -15,7 +15,7 @@ It features:
 import glisp
 
 pub fn main() {
-  glisp.eval("(+ 1 2 3)")
+  glisp.eval("(+ 1 2 3)") # => "6"
 }
 ```
 
