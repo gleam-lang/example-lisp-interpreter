@@ -4,7 +4,7 @@ A tree-walking Lisp interpreter written in [Gleam](https://gleam.run).
 
 It features:
 - [x] Ints with `+`, `-`, `*`, and `/`.
-- [ ] Bools with `!`.
+- [x] Bools with `not`, `and`, and `or`.
 - [ ] Comparison with `=`.
 - [x] Lists with `cons`, `car`, `cdr`.
 - [ ] Closures with `lambda`.

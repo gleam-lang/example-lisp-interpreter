@@ -116,3 +116,35 @@ pub fn false_test() {
 pub fn true_test() {
   assert Ok("true") = glisp.eval("true")
 }
+
+pub fn not_true_test() {
+  assert Ok("false") = glisp.eval("(not true)")
+}
+
+pub fn not_false_test() {
+  assert Ok("true") = glisp.eval("(not false)")
+}
+
+pub fn and_empty_test() {
+  assert Ok("true") = glisp.eval("(and)")
+}
+
+pub fn and_true_test() {
+  assert Ok("true") = glisp.eval("(and true true true true)")
+}
+
+pub fn and_false_test() {
+  assert Ok("false") = glisp.eval("(and true true true false)")
+}
+
+pub fn or_empty_test() {
+  assert Ok("false") = glisp.eval("(or)")
+}
+
+pub fn or_true_test() {
+  assert Ok("true") = glisp.eval("(or false false false true)")
+}
+
+pub fn or_false_test() {
+  assert Ok("false") = glisp.eval("(or false false false false)")
+}

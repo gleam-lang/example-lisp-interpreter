@@ -130,6 +130,9 @@ fn new_state() -> State {
     |> map.insert("cons", Procedure(cons_builtin, map.new()))
     |> map.insert("car", Procedure(car_builtin, map.new()))
     |> map.insert("cdr", Procedure(cdr_builtin, map.new()))
+    |> map.insert("not", Procedure(not_builtin, map.new()))
+    |> map.insert("and", Procedure(and_builtin, map.new()))
+    |> map.insert("or", Procedure(or_builtin, map.new()))
     |> map.insert("define", Procedure(define_builtin, map.new()))
   let local_scope = map.new()
   State(global_scope: global_scope, local_scope: local_scope)
@@ -249,8 +252,8 @@ fn cons_builtin(values: List(Expression), state: State) -> Evaluated {
   }
 }
 
-fn car_builtin(values: List(Expression), state: State) -> Evaluated {
-  try expression = expect_1(values)
+fn car_builtin(expressions: List(Expression), state: State) -> Evaluated {
+  try expression = expect_1(expressions)
   try #(value, state) = evaluate_expression(expression, state)
   try list = expect_list(value)
   case list {
@@ -259,13 +262,48 @@ fn car_builtin(values: List(Expression), state: State) -> Evaluated {
   }
 }
 
-fn cdr_builtin(values: List(Expression), state: State) -> Evaluated {
-  try expression = expect_1(values)
+fn cdr_builtin(expressions: List(Expression), state: State) -> Evaluated {
+  try expression = expect_1(expressions)
   try #(value, state) = evaluate_expression(expression, state)
   try list = expect_list(value)
   case list {
     [] -> Error(EmptyList)
     [_, ..tail] -> Ok(#(List(tail), state))
+  }
+}
+
+fn not_builtin(expressions: List(Expression), state: State) -> Evaluated {
+  try expression = expect_1(expressions)
+  try #(value, state) = evaluate_expression(expression, state)
+  try bool = expect_bool(value)
+  Ok(#(Bool(!bool), state))
+}
+
+fn and_builtin(expressions: List(Expression), state: State) -> Evaluated {
+  case expressions {
+    [] -> Ok(#(Bool(True), state))
+    [expression, ..rest] -> {
+      try #(value, state) = evaluate_expression(expression, state)
+      try bool = expect_bool(value)
+      case bool {
+        True -> and_builtin(rest, state)
+        False -> Ok(#(Bool(False), state))
+      }
+    }
+  }
+}
+
+fn or_builtin(expressions: List(Expression), state: State) -> Evaluated {
+  case expressions {
+    [] -> Ok(#(Bool(False), state))
+    [expression, ..rest] -> {
+      try #(value, state) = evaluate_expression(expression, state)
+      try bool = expect_bool(value)
+      case bool {
+        True -> Ok(#(Bool(True), state))
+        False -> or_builtin(rest, state)
+      }
+    }
   }
 }
 
@@ -295,6 +333,13 @@ fn expect_list(value: Expression) -> Result(List(Expression), Error) {
   case value {
     List(name) -> Ok(name)
     _ -> type_error("List", value)
+  }
+}
+
+fn expect_bool(value: Expression) -> Result(Bool, Error) {
+  case value {
+    Bool(x) -> Ok(x)
+    _ -> type_error("Bool", value)
   }
 }
 
