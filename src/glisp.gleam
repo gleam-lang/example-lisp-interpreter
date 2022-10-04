@@ -10,7 +10,7 @@ pub type Expression {
   Bool(Bool)
   Int(Int)
   Atom(String)
-  Procedure(procedure: Procedure, scope: Scope)
+  Procedure(procedure: Procedure)
 }
 
 pub type Error {
@@ -121,19 +121,22 @@ fn parse_atom_content(source: String, atom: String) -> #(String, String) {
 
 fn new_state() -> State {
   let global_scope =
-    map.new()
-    |> map.insert("+", make_int_operator(fn(a, b) { a + b }, 0))
-    |> map.insert("-", make_int_operator(fn(a, b) { a - b }, 0))
-    |> map.insert("*", make_int_operator(fn(a, b) { a * b }, 1))
-    |> map.insert("/", make_int_operator(fn(a, b) { a / b }, 1))
-    |> map.insert("empty", empty)
-    |> map.insert("cons", Procedure(cons_builtin, map.new()))
-    |> map.insert("car", Procedure(car_builtin, map.new()))
-    |> map.insert("cdr", Procedure(cdr_builtin, map.new()))
-    |> map.insert("not", Procedure(not_builtin, map.new()))
-    |> map.insert("and", Procedure(and_builtin, map.new()))
-    |> map.insert("or", Procedure(or_builtin, map.new()))
-    |> map.insert("define", Procedure(define_builtin, map.new()))
+    map.from_list([
+      #("+", make_int_operator(fn(a, b) { a + b }, 0)),
+      #("-", make_int_operator(fn(a, b) { a - b }, 0)),
+      #("*", make_int_operator(fn(a, b) { a * b }, 1)),
+      #("/", make_int_operator(fn(a, b) { a / b }, 1)),
+      #("empty", empty),
+      #("cons", Procedure(cons_builtin)),
+      #("car", Procedure(car_builtin)),
+      #("cdr", Procedure(cdr_builtin)),
+      #("let", Procedure(let_builtin)),
+      #("=", Procedure(eq_builtin)),
+      #("not", Procedure(not_builtin)),
+      #("and", Procedure(and_builtin)),
+      #("or", Procedure(or_builtin)),
+      #("define", Procedure(define_builtin)),
+    ])
   let local_scope = map.new()
   State(global_scope: global_scope, local_scope: local_scope)
 }
@@ -190,20 +193,20 @@ fn evaluate_list(list: List(Expression), state) -> Evaluated {
 fn call(
   callable: Expression,
   arguments: List(Expression),
-  state1: State,
+  state: State,
 ) -> Evaluated {
   case callable {
-    Procedure(procedure, scope) -> {
-      try #(result, state2) = procedure(arguments, set_locals(state1, scope))
-      let state = set_locals(state2, state1.local_scope)
-      Ok(#(result, state))
-    }
+    Procedure(procedure) -> procedure(arguments, state)
     _ -> type_error("procedure", callable)
   }
 }
 
 fn set_locals(state: State, locals: Scope) -> State {
   State(..state, local_scope: locals)
+}
+
+fn insert_local(state: State, name: String, value: Expression) -> State {
+  State(..state, local_scope: map.insert(state.local_scope, name, value))
 }
 
 fn insert_global(state: State, name: String, value: Expression) -> State {
@@ -238,7 +241,7 @@ fn make_int_operator(reducer: fn(Int, Int) -> Int, initial: Int) -> Expression {
       |> Int
     Ok(#(result, state))
   }
-  Procedure(procedure, map.new())
+  Procedure(procedure)
 }
 
 fn cons_builtin(values: List(Expression), state: State) -> Evaluated {
@@ -269,6 +272,47 @@ fn cdr_builtin(expressions: List(Expression), state: State) -> Evaluated {
   case list {
     [] -> Error(EmptyList)
     [_, ..tail] -> Ok(#(List(tail), state))
+  }
+}
+
+fn let_builtin(expressions: List(Expression), state: State) -> Evaluated {
+  let original_locals = state.local_scope
+  try #(bindings, value) = expect_2(expressions)
+  try bindings = expect_list(bindings)
+  try state = list.try_fold(bindings, state, evaluate_binding)
+  try #(value, state) = evaluate_expression(value, state)
+  Ok(#(value, set_locals(state, original_locals)))
+}
+
+fn evaluate_binding(state: State, binding: Expression) -> Result(State, Error) {
+  try binding = expect_list(binding)
+  try #(name, value) = expect_2(binding)
+  try name = expect_atom(name)
+  try #(value, state) = evaluate_expression(value, state)
+  Ok(insert_local(state, name, value))
+}
+
+fn eq_builtin(expressions: List(Expression), state: State) -> Evaluated {
+  try #(a, b) = expect_2(expressions)
+  try #(a, state) = evaluate_expression(a, state)
+  try #(b, state) = evaluate_expression(b, state)
+  Ok(#(Bool(compare(a, b)), state))
+}
+
+fn compare(a: Expression, b: Expression) -> Bool {
+  case a, b {
+    Int(a), Int(b) -> a == b
+    Bool(a), Bool(b) -> a == b
+    List(a), List(b) -> compare_lists(a, b)
+    _, _ -> False
+  }
+}
+
+fn compare_lists(a: List(Expression), b: List(Expression)) -> Bool {
+  case a, b {
+    [], [] -> True
+    [x, ..xs], [y, ..ys] -> compare(x, y) && compare_lists(xs, ys)
+    _, _ -> False
   }
 }
 
@@ -350,12 +394,21 @@ fn expect_1(expressions: List(Expression)) -> Result(Expression, Error) {
   }
 }
 
+fn expect_2(
+  expressions: List(Expression),
+) -> Result(#(Expression, Expression), Error) {
+  case expressions {
+    [x, y] -> Ok(#(x, y))
+    _ -> arity_error(1, expressions)
+  }
+}
+
 fn type_name(value: Expression) -> String {
   case value {
     Int(_) -> "Int"
     Bool(_) -> "Bool"
     List(_) -> "List"
-    Procedure(_, _) -> "Procedure"
+    Procedure(_) -> "Procedure"
     Atom(_) -> "Atom"
   }
 }
@@ -366,7 +419,7 @@ fn print(value: Expression) -> String {
     Bool(True) -> "true"
     Bool(False) -> "false"
     List(xs) -> "'(" <> string.join(list.map(xs, print), " ") <> ")"
-    Procedure(_, _) -> "#procedure"
+    Procedure(_) -> "#procedure"
     Atom(x) -> "'" <> x
   }
 }

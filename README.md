@@ -5,11 +5,12 @@ A tree-walking Lisp interpreter written in [Gleam](https://gleam.run).
 It features:
 - [x] Ints with `+`, `-`, `*`, and `/`.
 - [x] Bools with `not`, `and`, and `or`.
-- [ ] Comparison with `=`.
+- [=] Comparison with `=`.
 - [x] Lists with `cons`, `car`, `cdr`.
 - [ ] Closures with `lambda`.
 - [x] Global variables with `define`.
-- [ ] Local variables with `let`.
+- [x] Local variables with `let`.
+- [ ] Flow control with `if`.
 
 ## Usage
 

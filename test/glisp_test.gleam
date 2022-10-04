@@ -148,3 +148,42 @@ pub fn or_true_test() {
 pub fn or_false_test() {
   assert Ok("false") = glisp.eval("(or false false false false)")
 }
+
+pub fn eq_true_int_test() {
+  assert Ok("true") = glisp.eval("(= 1 1)")
+}
+
+pub fn eq_false_int_test() {
+  assert Ok("false") = glisp.eval("(= 2 1)")
+}
+
+pub fn eq_true_list_test() {
+  assert Ok("true") = glisp.eval("(= (cons 1 empty) (cons 1 empty))")
+}
+
+pub fn eq_false_list_test() {
+  assert Ok("false") = glisp.eval("(= empty (cons 1 empty))")
+}
+
+pub fn eq_proc_list_test() {
+  assert Ok("false") = glisp.eval("(= cons cons)")
+}
+
+pub fn eq_other_test() {
+  assert Ok("false") = glisp.eval("(= 1 cons)")
+}
+
+pub fn let_test() {
+  assert Ok("3") = glisp.eval("(let ((x 1) (y (+ x 2))) y)")
+}
+
+pub fn let_nested_test() {
+  // Here x is defined in both lets. The inner one does not leak
+  assert Ok("1") =
+    glisp.eval(
+      "
+    (let ((x 1) 
+          (y (let ((x 2)) x)))
+         x)",
+    )
+}
