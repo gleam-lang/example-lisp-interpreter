@@ -181,9 +181,20 @@ pub fn let_nested_test() {
   // Here x is defined in both lets. The inner one does not leak
   assert Ok("1") =
     glisp.eval(
-      "
-    (let ((x 1) 
-          (y (let ((x 2)) x)))
-         x)",
+      "(let ((x 1) 
+             (y (let ((x 2)) x)))
+        x)",
     )
+}
+
+pub fn procedure_printing_test() {
+  assert Ok("#<procedure>") = glisp.eval("let")
+}
+
+pub fn if_true_test() {
+  assert Ok("2") = glisp.eval("(if (= 1 1) (+ 1 1) (+ 2 2))")
+}
+
+pub fn if_false_test() {
+  assert Ok("4") = glisp.eval("(if (= 1 2) (+ 1 1) (+ 2 2))")
 }

@@ -135,6 +135,7 @@ fn new_state() -> State {
       #("not", Procedure(not_builtin)),
       #("and", Procedure(and_builtin)),
       #("or", Procedure(or_builtin)),
+      #("if", Procedure(if_builtin)),
       #("define", Procedure(define_builtin)),
     ])
   let local_scope = map.new()
@@ -351,6 +352,16 @@ fn or_builtin(expressions: List(Expression), state: State) -> Evaluated {
   }
 }
 
+fn if_builtin(expressions: List(Expression), state: State) -> Evaluated {
+  try #(condition, then, else) = expect_3(expressions)
+  try #(condition, state) = evaluate_expression(condition, state)
+  try bool = expect_bool(condition)
+  case bool {
+    True -> evaluate_expression(then, state)
+    False -> evaluate_expression(else, state)
+  }
+}
+
 fn type_error(expected: String, value: Expression) -> Result(anything, Error) {
   Error(TypeError(expected: expected, got: type_name(value), value: value))
 }
@@ -399,7 +410,16 @@ fn expect_2(
 ) -> Result(#(Expression, Expression), Error) {
   case expressions {
     [x, y] -> Ok(#(x, y))
-    _ -> arity_error(1, expressions)
+    _ -> arity_error(2, expressions)
+  }
+}
+
+fn expect_3(
+  expressions: List(Expression),
+) -> Result(#(Expression, Expression, Expression), Error) {
+  case expressions {
+    [x, y, z] -> Ok(#(x, y, z))
+    _ -> arity_error(3, expressions)
   }
 }
 
@@ -419,7 +439,7 @@ fn print(value: Expression) -> String {
     Bool(True) -> "true"
     Bool(False) -> "false"
     List(xs) -> "'(" <> string.join(list.map(xs, print), " ") <> ")"
-    Procedure(_) -> "#procedure"
+    Procedure(_) -> "#<procedure>"
     Atom(x) -> "'" <> x
   }
 }

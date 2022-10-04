@@ -10,7 +10,7 @@ It features:
 - [ ] Closures with `lambda`.
 - [x] Global variables with `define`.
 - [x] Local variables with `let`.
-- [ ] Flow control with `if`.
+- [x] Flow control with `if`.
 
 ## Usage
 
