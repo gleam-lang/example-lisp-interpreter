@@ -7,6 +7,7 @@ import gleam/map.{Map}
 
 pub type Expression {
   List(List(Expression))
+  Bool(Bool)
   Int(Int)
   Atom(String)
   Procedure(procedure: Procedure, scope: Scope)
@@ -94,6 +95,8 @@ fn parse_atom(source: String) -> Parsed {
   case content, rest {
     "", "" -> Error(UnexpectedEndOfFile)
     "", ")" <> _ -> Error(UnexpectedCloseParen)
+    "true", _ -> Ok(#(Bool(True), rest))
+    "false", _ -> Ok(#(Bool(False), rest))
     _, _ -> {
       let atom =
         int.parse(content)
@@ -148,7 +151,7 @@ fn evaluate(
 
 fn evaluate_expression(expression: Expression, state: State) -> Evaluated {
   case expression {
-    Int(_) | Procedure(..) -> Ok(#(expression, state))
+    Bool(_) | Int(_) | Procedure(..) -> Ok(#(expression, state))
     List(expressions) -> evaluate_list(expressions, state)
     Atom(atom) -> {
       try value = evaluate_atom(atom, state)
@@ -262,7 +265,7 @@ fn cdr_builtin(values: List(Expression), state: State) -> Evaluated {
   try list = expect_list(value)
   case list {
     [] -> Error(EmptyList)
-    tail -> Ok(#(List(tail), state))
+    [_, ..tail] -> Ok(#(List(tail), state))
   }
 }
 
@@ -305,6 +308,7 @@ fn expect_1(expressions: List(Expression)) -> Result(Expression, Error) {
 fn type_name(value: Expression) -> String {
   case value {
     Int(_) -> "Int"
+    Bool(_) -> "Bool"
     List(_) -> "List"
     Procedure(_, _) -> "Procedure"
     Atom(_) -> "Atom"
@@ -314,6 +318,8 @@ fn type_name(value: Expression) -> String {
 fn print(value: Expression) -> String {
   case value {
     Int(i) -> int.to_string(i)
+    Bool(True) -> "true"
+    Bool(False) -> "false"
     List(xs) -> "'(" <> string.join(list.map(xs, print), " ") <> ")"
     Procedure(_, _) -> "#procedure"
     Atom(x) -> "'" <> x

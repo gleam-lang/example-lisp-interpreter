@@ -3,7 +3,9 @@
 A tree-walking Lisp interpreter written in [Gleam](https://gleam.run).
 
 It features:
-- [x] Integers with `+`, `-`, `*`, and `/`.
+- [x] Ints with `+`, `-`, `*`, and `/`.
+- [ ] Bools with `!`.
+- [ ] Comparison with `=`.
 - [x] Lists with `cons`, `car`, `cdr`.
 - [ ] Closures with `lambda`.
 - [x] Global variables with `define`.
