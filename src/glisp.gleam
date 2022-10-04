@@ -33,7 +33,7 @@ type Function =
 pub fn eval(source: String) -> Result(Expression, Error) {
   source
   |> parse([])
-  |> evaluate(Nil, State(scope: map.new()))
+  |> evaluate(Nil, new_state())
   |> result.map(pair.first)
 }
 
@@ -91,6 +91,16 @@ fn parse_atom_content(source: String, atom: String) -> #(String, String) {
     " " -> #(atom, rest)
     char -> parse_atom_content(rest, atom <> char)
   }
+}
+
+fn new_state() -> State {
+  map.new()
+  |> map.insert("+", int_function(fn(a, b) { a + b }, 0))
+  |> map.insert("-", int_function(fn(a, b) { a - b }, 0))
+  |> map.insert("*", int_function(fn(a, b) { a * b }, 1))
+  |> map.insert("/", int_function(fn(a, b) { a / b }, 1))
+  |> map.insert("empty", List([]))
+  |> State
 }
 
 fn evaluate(
@@ -162,23 +172,19 @@ fn call(
 
 fn define(arguments: List(Expression), state: State) -> Evaluated {
   case arguments {
-    [] -> Error(MalformedDefinition)
-    [first, ..rest] -> {
-      try name = expect_atom(first)
-      try #(value, _body_scope_state) = evaluate(rest, Nil, state)
+    [name, value] -> {
+      try name = expect_atom(name)
+      try #(value, _body_scope_state) = evaluate_expression(value, state)
       let state = State(scope: map.insert(state.scope, name, value))
       Ok(#(Nil, state))
     }
+    _ -> Error(MalformedDefinition)
   }
 }
 
 fn evaluate_atom(atom: String, state: State) -> Result(Expression, Error) {
   case atom {
-    "def" -> Ok(Definition)
-    "+" -> Ok(int_function(fn(a, b) { a + b }, 0))
-    "-" -> Ok(int_function(fn(a, b) { a - b }, 0))
-    "*" -> Ok(int_function(fn(a, b) { a * b }, 1))
-    "/" -> Ok(int_function(fn(a, b) { a / b }, 1))
+    "define" -> Ok(Definition)
     _ ->
       case map.get(state.scope, atom) {
         Ok(found) -> Ok(found)

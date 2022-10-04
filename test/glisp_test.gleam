@@ -5,7 +5,7 @@ pub fn main() {
   gleeunit.main()
 }
 
-pub fn empty_test() {
+pub fn no_code_test() {
   assert Ok(glisp.Nil) = glisp.eval("")
 }
 
@@ -70,17 +70,25 @@ pub fn nested_expressions_test() {
 }
 
 pub fn def_test() {
-  assert Ok(glisp.Int(1)) = glisp.eval("(def x 1) x")
+  assert Ok(glisp.Int(1)) = glisp.eval("(define x 1) x")
 }
 
 pub fn redefine_test() {
-  assert Ok(glisp.Int(2)) = glisp.eval("(def x 1) (def x 2) x")
+  assert Ok(glisp.Int(2)) = glisp.eval("(define x 1) (define x 2) x")
 }
 
 pub fn var_in_expression_test() {
-  assert Ok(glisp.Int(3)) = glisp.eval("(def x 1) (def x (+ x 2)) x")
+  assert Ok(glisp.Int(3)) = glisp.eval("(define x 1) (define x (+ x 2)) x")
 }
 
 pub fn def_sequence_body_test() {
-  assert Ok(glisp.Int(3)) = glisp.eval("(def x 1 2 3) x")
+  assert Error(glisp.MalformedDefinition) = glisp.eval("(define x 1 2 3) x")
+}
+
+pub fn empty_test() {
+  assert Ok(glisp.List([])) = glisp.eval("empty")
+}
+
+pub fn cons_test() {
+  assert Ok(glisp.List([])) = glisp.eval("empty")
 }
