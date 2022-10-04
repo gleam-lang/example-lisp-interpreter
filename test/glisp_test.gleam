@@ -6,7 +6,11 @@ pub fn main() {
 }
 
 pub fn no_code_test() {
-  assert Ok("nil") = glisp.eval("")
+  assert Error(glisp.UnexpectedEndOfFile) = glisp.eval("")
+}
+
+pub fn close_paren_test() {
+  assert Error(glisp.UnexpectedCloseParen) = glisp.eval("(+ 1 2))")
 }
 
 pub fn empty_list_test() {

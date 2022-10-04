@@ -4,8 +4,10 @@ A tree-walking Lisp interpreter written in [Gleam](https://gleam.run).
 
 It features:
 - Integers and basic arithmetic.
+- Lists, `cons`.
 - Immutable variable definitions.
 - Lexical scoping.
+- S-expression printing.
 
 ## Usage
 

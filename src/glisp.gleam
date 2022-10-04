@@ -6,7 +6,6 @@ import gleam/string
 import gleam/map.{Map}
 
 pub type Expression {
-  Nil
   List(List(Expression))
   Int(Int)
   Atom(String)
@@ -18,6 +17,8 @@ pub type Error {
   MissingProcedure
   IncorrectArity(expected: Int, got: Int)
   TypeError(expected: String, got: String, value: Expression)
+  UnexpectedEndOfFile
+  UnexpectedCloseParen
 }
 
 pub type Scope =
@@ -30,59 +31,76 @@ pub type State {
 type Evaluated =
   Result(#(Expression, State), Error)
 
+type Parsed =
+  Result(#(Expression, String), Error)
+
 type Procedure =
   fn(List(Expression), State) -> Evaluated
 
 pub fn eval(source: String) -> Result(String, Error) {
   source
   |> parse([])
-  |> evaluate(Nil, new_state())
+  |> result.then(evaluate(_, empty, new_state()))
   |> result.map(pair.first)
   |> result.map(print)
 }
 
-fn parse(source: String, expressions: List(Expression)) -> List(Expression) {
-  let #(expression, rest) = parse_element(source)
+const empty = List([])
+
+fn parse(
+  source: String,
+  expressions: List(Expression),
+) -> Result(List(Expression), Error) {
+  try #(expression, rest) = parse_expression(source)
   let expressions = [expression, ..expressions]
-  case rest {
-    "" -> list.reverse(expressions)
+  case string.trim_left(rest) {
+    "" -> Ok(list.reverse(expressions))
     _ -> parse(rest, expressions)
   }
 }
 
-fn parse_element(source: String) -> #(Expression, String) {
-  let source = string.trim(source)
+fn parse_expression(source: String) -> Parsed {
+  let source = string.trim_left(source)
   case source {
-    "" -> #(Nil, "")
-    ")" <> rest -> #(Nil, rest)
+    "" -> Error(UnexpectedEndOfFile)
+    ")" <> _ -> Error(UnexpectedCloseParen)
     "(" <> source -> parse_list(source)
     source -> parse_atom(source)
   }
 }
 
-fn parse_list(source: String) -> #(Expression, String) {
+fn parse_list(source: String) -> Parsed {
   tail_recursive_parse_list(source, [])
 }
 
 fn tail_recursive_parse_list(
   source: String,
   elements: List(Expression),
-) -> #(Expression, String) {
-  let #(expression, rest) = parse_element(source)
-  case expression {
-    Nil -> #(List(list.reverse(elements)), rest)
-    _ -> tail_recursive_parse_list(rest, [expression, ..elements])
+) -> Parsed {
+  let source = string.trim_left(source)
+  case source {
+    "" -> Error(UnexpectedEndOfFile)
+    ")" <> rest -> Ok(#(List(list.reverse(elements)), rest))
+    _ -> {
+      try #(expression, rest) = parse_expression(source)
+      tail_recursive_parse_list(rest, [expression, ..elements])
+    }
   }
 }
 
-fn parse_atom(source: String) -> #(Expression, String) {
+fn parse_atom(source: String) -> Parsed {
   let #(content, rest) = parse_atom_content(source, "")
-  let atom = case int.parse(content) {
-    Ok(i) -> Int(i)
-    _ -> Atom(content)
+  case content, rest {
+    "", "" -> Error(UnexpectedEndOfFile)
+    "", ")" <> _ -> Error(UnexpectedCloseParen)
+    _, _ -> {
+      let atom =
+        int.parse(content)
+        |> result.map(Int)
+        |> result.unwrap(Atom(content))
+      Ok(#(atom, rest))
+    }
   }
-
-  #(atom, rest)
 }
 
 fn parse_atom_content(source: String, atom: String) -> #(String, String) {
@@ -104,7 +122,7 @@ fn new_state() -> State {
     |> map.insert("-", make_int_operator(fn(a, b) { a - b }, 0))
     |> map.insert("*", make_int_operator(fn(a, b) { a * b }, 1))
     |> map.insert("/", make_int_operator(fn(a, b) { a / b }, 1))
-    |> map.insert("empty", List([]))
+    |> map.insert("empty", empty)
     |> map.insert("cons", Procedure(cons_builtin, map.new()))
     |> map.insert("define", Procedure(define_builtin, map.new()))
   let local_scope = map.new()
@@ -127,10 +145,8 @@ fn evaluate(
 
 fn evaluate_expression(expression: Expression, state: State) -> Evaluated {
   case expression {
-    Nil | Int(_) | Procedure(..) -> Ok(#(expression, state))
-
+    Int(_) | Procedure(..) -> Ok(#(expression, state))
     List(expressions) -> evaluate_list(expressions, state)
-
     Atom(atom) -> {
       try value = evaluate_atom(atom, state)
       Ok(#(value, state))
@@ -190,7 +206,7 @@ fn define_builtin(arguments: List(Expression), state: State) -> Evaluated {
     [name, value] -> {
       try name = expect_atom(name)
       try #(value, state) = evaluate_expression(value, state)
-      Ok(#(Nil, insert_global(state, name, value)))
+      Ok(#(empty, insert_global(state, name, value)))
     }
     _ -> Error(IncorrectArity(2, list.length(arguments)))
   }
@@ -254,7 +270,6 @@ fn expect_list(value: Expression) -> Result(List(Expression), Error) {
 
 fn type_name(value: Expression) -> String {
   case value {
-    Nil -> "Nil"
     Int(_) -> "Int"
     List(_) -> "List"
     Procedure(_, _) -> "Procedure"
@@ -264,7 +279,6 @@ fn type_name(value: Expression) -> String {
 
 fn print(value: Expression) -> String {
   case value {
-    Nil -> "nil"
     Int(i) -> int.to_string(i)
     List(xs) -> "'(" <> string.join(list.map(xs, print), " ") <> ")"
     Procedure(_, _) -> "#procedure"
