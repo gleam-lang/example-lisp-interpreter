@@ -6,7 +6,7 @@ It features:
 - [x] Ints with `+`, `-`, `*`, and `/`.
 - [x] Bools with `not`, `and`, and `or`.
 - [x] Comparison with `=`.
-- [x] Lists with `cons`, `car`, `cdr`.
+- [x] Lists with `empty`, `cons`, `car`, `cdr`.
 - [x] Closures with `lambda`.
 - [x] Global variables with `define`.
 - [x] Local variables with `let`.
