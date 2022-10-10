@@ -1,6 +1,6 @@
 # Glisp
 
-A tree-walking Lisp interpreter written in [Gleam](https://gleam.run).
+A tree-walking Lisp interpreter written in [Gleam](https://gleam.run)!
 
 It features:
 - [x] Ints with `+`, `-`, `*`, and `/`.
