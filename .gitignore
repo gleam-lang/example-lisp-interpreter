@@ -13,3 +13,4 @@
 ebin
 erl_crash.dump
 build
+.DS_Store
