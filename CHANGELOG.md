@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Updated for Gleam v1.9.1
+- Update code actions
+- Update dependencies
+- Replace removed `string.trim_left` with `string.trim_start`
+
 ## v1.2.0 - 2022-05-29
 
 - Make the library compatible with the JavaScript target

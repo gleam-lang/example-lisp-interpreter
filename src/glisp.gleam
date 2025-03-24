@@ -23,12 +23,12 @@
 //// - The `empty` built-in procedure that returns an empty list
 
 // -- Imports --
+import gleam/dict.{type Dict}
 import gleam/int
 import gleam/list
 import gleam/pair
 import gleam/result
 import gleam/string
-import gleam/dict.{type Dict}
 
 // -- Types --
 
@@ -61,7 +61,7 @@ pub type Scope =
 
 /// State represents the state of the interpreter.
 /// It contains the global scope and the local scope.
-/// The local scope is used for local variables and 
+/// The local scope is used for local variables and
 /// the global scope is used for global variables.
 pub type State {
   State(global_scope: Scope, local_scope: Scope)
@@ -79,7 +79,7 @@ type Parsed =
 type Procedure =
   fn(List(Expression), State) -> Evaluated
 
-/// Eval function takes a string as an input and returns a result 
+/// Eval function takes a string as an input and returns a result
 /// after evaluating the input.
 pub fn eval(source: String) -> Result(String, Error) {
   source
@@ -94,7 +94,7 @@ const empty = List([])
 
 // -- Parsing --
 
-/// Parse function takes a string as an input and a list of expressions and 
+/// Parse function takes a string as an input and a list of expressions and
 /// returns a result after parsing the input.
 fn parse(
   source: String,
@@ -102,7 +102,7 @@ fn parse(
 ) -> Result(List(Expression), Error) {
   use #(expression, rest) <- result.try(parse_expression(source))
   let expressions = [expression, ..expressions]
-  case string.trim_left(rest) {
+  case string.trim_start(rest) {
     "" -> Ok(list.reverse(expressions))
     _ -> parse(rest, expressions)
   }
@@ -112,7 +112,7 @@ fn parse(
 /// after parsing the expressions included in the source.
 /// Also checks for unexpected end of file and unexpected close parenthesis.
 fn parse_expression(source: String) -> Parsed {
-  let source = string.trim_left(source)
+  let source = string.trim_start(source)
   case source {
     "" -> Error(UnexpectedEndOfFile)
     ")" <> _ -> Error(UnexpectedCloseParen)
@@ -133,7 +133,7 @@ fn tail_recursive_parse_list(
   source: String,
   elements: List(Expression),
 ) -> Parsed {
-  let source = string.trim_left(source)
+  let source = string.trim_start(source)
   case source {
     "" -> Error(UnexpectedEndOfFile)
     ")" <> rest -> Ok(#(List(list.reverse(elements)), rest))
@@ -146,7 +146,7 @@ fn tail_recursive_parse_list(
 
 /// Parse_atom function takes a string as a source and returns a result
 /// Atoms can be integers, booleans or symbols.
-/// This function also checks for unexpected end of file and 
+/// This function also checks for unexpected end of file and
 /// unexpected close parenthesis.
 fn parse_atom(source: String) -> Parsed {
   let #(content, rest) = parse_atom_content(source, "")
@@ -461,7 +461,7 @@ fn let_builtin(expressions: List(Expression), state: State) -> Evaluated {
   Ok(#(value, set_locals(state, original_locals)))
 }
 
-/// Evaluate_binding function takes a state and a binding and returns a result 
+/// Evaluate_binding function takes a state and a binding and returns a result
 /// after evaluating the binding.
 fn evaluate_binding(state: State, binding: Expression) -> Result(State, Error) {
   use binding <- result.try(expect_list(binding))
@@ -575,7 +575,7 @@ fn type_error(expected: String, value: Expression) -> Result(anything, Error) {
 /// arity_error function takes an expected arity and a list of expressions and
 /// returns a result after creating an arity error.
 /// It is used to create an arity error when the expected arity and the length
-/// 
+///
 fn arity_error(expected: Int, got: List(a)) -> Result(anything, Error) {
   Error(IncorrectArity(expected: expected, got: list.length(got)))
 }
@@ -665,7 +665,7 @@ fn type_name(value: Expression) -> String {
   }
 }
 
-/// Print function takes an expression and prints a string representing the 
+/// Print function takes an expression and prints a string representing the
 /// expression.
 fn print(value: Expression) -> String {
   case value {
