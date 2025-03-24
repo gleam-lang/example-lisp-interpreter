@@ -5,12 +5,12 @@ description = "A Gleam Lisp interpreter"
 
 repository = { type = "github", user = "gleam-lang", repo = "example_lisp_interpreter" }
 links = [
-  { title = "Website", href = "https://gleam.run" },
-  { title = "Sponsor", href = "https://github.com/sponsors/lpil" },
+    { title = "Website", href = "https://gleam.run" },
+    { title = "Sponsor", href = "https://github.com/sponsors/lpil" },
 ]
 
 [dependencies]
-gleam_stdlib = "~> 0.34 or ~> 1.0"
+gleam_stdlib = ">= 0.44.0 and < 2.0.0"
 
 [dev-dependencies]
-gleeunit = "~> 1.0"
+gleeunit = ">= 1.0.0 and < 2.0.0"
