@@ -1,11 +1,9 @@
 # Changelog
 
-## Unreleased
+## v1.2.1 - 2025-03-27
 
-- Updated for Gleam v1.9.1
-- Update code actions
-- Update dependencies
-- Replace removed `string.trim_left` with `string.trim_start`
+- Updated for Gleam v1.9.1.
+- Updated for gleam_stdlib v0.44.0.
 
 ## v1.2.0 - 2022-05-29
 

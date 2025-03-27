@@ -1,5 +1,5 @@
 name = "glisp"
-version = "1.2.0"
+version = "1.2.1"
 licences = ["Apache-2.0"]
 description = "A Gleam Lisp interpreter"
 
